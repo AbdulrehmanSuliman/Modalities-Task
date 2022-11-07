@@ -24,7 +24,7 @@ class ImageDisplay(QtWidgets.QWidget):
         self.layout_main.setContentsMargins(0, 0, 0, 0)
         self.layout_main.addWidget(self.ImageDisplayer)
         self.canvasWidth = 700
-        self.canvasHeight = 400
+        self.canvasHeight = 300
         self.setLayout(self.layout_main)
         self.MessageBox = QtWidgets.QMessageBox(
             QtWidgets.QMessageBox.Warning, "Error", "Error")
@@ -35,7 +35,7 @@ class ImageDisplay(QtWidgets.QWidget):
         Args:
             path (str): File Path
         """
-        self.ImageDisplayer.axes.imshow(volume[200], cmap='gray')
+        self.ImageDisplayer.axes.imshow(volume[215], cmap='gray')
         self.setFixedWidth(self.canvasWidth)
         self.setFixedHeight(self.canvasHeight)
         self.update()

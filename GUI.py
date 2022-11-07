@@ -119,10 +119,6 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         # setting the data of each volume
         for i in range(file_count):
             dicomVolume[i] = dicom.dcmread(path + '/' + files[i]).pixel_array
-            for x in range(dicomVolume[i].shape[1]):
-                sagitalVolume[x, :, i] = dicomVolume[i, :, x]
-            for x in range(dicomVolume[i].shape[0]):
-                coronalVolume[x, i, :] = dicomVolume[i, x, :]
-        sagitalVolume = np.rot90(sagitalVolume, axes=(1, 0))
-        coronalVolume = np.rot90(coronalVolume, axes=(1, 0))
+        sagitalVolume = np.rot90(np.rot90(dicomVolume, axes=(0, 2)), axes=(1, 2))
+        coronalVolume = np.rot90(dicomVolume, axes=(1,0))
         return (dicomVolume, sagitalVolume, coronalVolume)
