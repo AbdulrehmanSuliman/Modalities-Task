@@ -17,7 +17,7 @@ class MplCanvas(FigureCanvasQTAgg):
 
 
 class ImageDisplay(QtWidgets.QWidget):
-    def __init__(self):
+    def __init__(self, sliceType):
         QWidget.__init__(self)
         self.ImageDisplayer = MplCanvas(self, width=5, height=4, dpi=100)
         self.layout_main = QtWidgets.QGridLayout()
@@ -25,28 +25,56 @@ class ImageDisplay(QtWidgets.QWidget):
         self.layout_main.addWidget(self.ImageDisplayer)
         self.canvasWidth = 700
         self.canvasHeight = 300
+        self.displayType = sliceType
+        self.obliqueLine = None
+
         self.setLayout(self.layout_main)
         self.MessageBox = QtWidgets.QMessageBox(
             QtWidgets.QMessageBox.Warning, "Error", "Error")
 
-    def displayVolume(self, volume):
+    def displayVolume(self, volume, slice):
         """Sets the path of the image and generates the information and puts it in a dictionary called Info
 
         Args:
             path (str): File Path
         """
-        self.ImageDisplayer.axes.imshow(volume[233], cmap='gray')
-        self.horizontalLine = self.ImageDisplayer.axes.axhline(y=50)
-        self.verticalLine = self.ImageDisplayer.axes.axvline(x=50)
-        self.horizontalLine.set_visible(True)
-        self.verticalLine.set_visible(True)
-        self.ImageDisplayer.figure.canvas.mpl_connect('motion_notify_event', self.onMouseMove)
-
-
+        self.slice1 = int(volume.shape[1]/2)
+        self.slice2 = int(volume.shape[2]/2)
+        self.ImageDisplayer.axes.imshow(
+            volume[slice], cmap='gray')
 
         self.setFixedWidth(self.canvasWidth)
         self.setFixedHeight(self.canvasHeight)
+
+        if self.canvasWidth == 700:
+            self.canvasWidth = 701
+        else:
+            self.canvasWidth = 700
+        if self.canvasHeight == 300:
+            self.canvasHeight = 301
+        else:
+            self.canvasHeight = 300
+
         self.update()
+
+    def createLines(self, mouse_press, mouse_move, mouse_release):
+        self.horizontalLine = self.ImageDisplayer.axes.axhline()
+        self.horizontalLine.set_ydata(self.slice1)
+        self.verticalLine = self.ImageDisplayer.axes.axvline()
+        self.verticalLine.set_xdata(self.slice2)
+        if self.displayType == "axial":
+            self.obliqueLine = self.ImageDisplayer.axes.axline(
+                [0, 0], slope=1)
+            self.obliqueLine.set_visible(True)
+
+        self.horizontalLine.set_visible(True)
+        self.verticalLine.set_visible(True)
+        self.ImageDisplayer.figure.canvas.mpl_connect(
+            'button_press_event', mouse_press)
+        self.ImageDisplayer.figure.canvas.mpl_connect(
+            'button_release_event', mouse_release)
+        self.ImageDisplayer.figure.canvas.mpl_connect(
+            'motion_notify_event', mouse_move)
 
     def DisplayError(self, title, Message):
         """Creates a messsage box when and error happens
@@ -58,12 +86,3 @@ class ImageDisplay(QtWidgets.QWidget):
         self.MessageBox.setWindowTitle(title)
         self.MessageBox.setText(Message)
         self.MessageBox.exec()
-
-    def onMouseMove(self, event):
-        x,y = event.xdata, event.ydata
-        print('x: {}, y: {}'.format(x,y))
-        print(y)
-        self.horizontalLine.set_ydata(y)
-        self.verticalLine.set_xdata(x)
-        self.ImageDisplayer.figure.canvas.draw()
-        self.update()

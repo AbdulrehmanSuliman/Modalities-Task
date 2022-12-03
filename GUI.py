@@ -43,17 +43,22 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.browse.browse_button.clicked.connect(lambda: self.BrowseClicked())
         self.layout_main.addWidget(self.browse, 0, 0, 1, 2)
 
-        self.coronalDisplay = ImageDisplay()
+        self.coronalDisplay = ImageDisplay("coronal")
         self.layout_main.addWidget(self.coronalDisplay, 1, 1)
 
-        self.axialdisplay = ImageDisplay()
+        self.axialdisplay = ImageDisplay("axial")
         self.layout_main.addWidget(self.axialdisplay, 1, 0)
 
-        self.sagitalDisplay = ImageDisplay()
+        self.sagitalDisplay = ImageDisplay("sagital")
         self.layout_main.addWidget(self.sagitalDisplay, 2, 0)
 
-        self.obliqueDisplay = ImageDisplay()
+        self.obliqueDisplay = ImageDisplay("oblique")
         self.layout_main.addWidget(self.obliqueDisplay, 2, 1)
+
+        self.horizontalPressed = False
+        self.verticalPressed = False
+
+        self.activeFigure = None
 
         self.main_widget.setFocus()
         self.setCentralWidget(self.main_widget)
@@ -68,10 +73,20 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
         self.axialVolume, self.sagitalVolume, self.coronalVolume,  = self.create3DMatrix(
             ImagesPath)
-        self.axialdisplay.displayVolume(self.axialVolume)
-        self.coronalDisplay.displayVolume(self.coronalVolume)
-        self.sagitalDisplay.displayVolume(self.sagitalVolume)
-        self.obliqueDisplay.displayVolume(self.axialVolume)
+        self.axialdisplay.displayVolume(
+            self.axialVolume, int(self.axialVolume.shape[0]/2))
+        self.axialdisplay.createLines(
+            self.mouse_press, self.mouse_move, self.mouse_release)
+        self.coronalDisplay.displayVolume(
+            self.coronalVolume, int(self.coronalVolume.shape[0]/2))
+        self.coronalDisplay.createLines(
+            self.mouse_press, self.mouse_move, self.mouse_release)
+        self.sagitalDisplay.displayVolume(
+            self.sagitalVolume, int(self.sagitalVolume.shape[0]/2))
+        self.sagitalDisplay.createLines(
+            self.mouse_press, self.mouse_move, self.mouse_release)
+        self.obliqueDisplay.displayVolume(
+            self.axialVolume, int(self.axialVolume.shape[0]/2))
 
     def open_dialog_box(self):
         """Creates a diaglog box for the user to select file and check if it's an image
@@ -119,6 +134,71 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         # setting the data of each volume
         for i in range(file_count):
             dicomVolume[i] = dicom.dcmread(path + '/' + files[i]).pixel_array
-        sagitalVolume = np.rot90(np.rot90(dicomVolume, axes=(0, 2)), axes=(1, 2))
-        coronalVolume = np.rot90(dicomVolume, axes=(1,0))
+        sagitalVolume = np.rot90(
+            np.rot90(dicomVolume, axes=(0, 2)), axes=(1, 2))
+        coronalVolume = np.rot90(dicomVolume, axes=(1, 0))
         return (dicomVolume, sagitalVolume, coronalVolume)
+
+    def mouse_release(self, event):
+        self.horizontalPressed = False
+        self.verticalPressed = False
+        return
+
+    def mouse_press(self, event):
+        print(event.xdata, event.ydata)
+        if self.axialdisplay.ImageDisplayer.axes == event.inaxes:
+            self.activeFigure = self.axialdisplay
+        elif self.coronalDisplay.ImageDisplayer.axes == event.inaxes:
+            self.activeFigure = self.coronalDisplay
+        elif self.sagitalDisplay.ImageDisplayer.axes == event.inaxes:
+            self.activeFigure = self.sagitalDisplay
+        elif self.obliqueDisplay.ImageDisplayer.axes == event.inaxes:
+            self.activeFigure = self.obliqueDisplay
+        x, y = event.xdata, event.ydata
+
+        if y <= self.activeFigure.horizontalLine.get_ydata()+10 and y >= self.activeFigure.horizontalLine.get_ydata()-10:
+            self.horizontalPressed = True
+
+        if x <= self.activeFigure.verticalLine.get_xdata()+10 and x >= self.activeFigure.verticalLine.get_xdata()-10:
+            self.verticalPressed = True
+
+        #--------------------TODO--------------------#
+        # getting data of oblique line
+        x, y = self.activeFigure.obliqueLine.get_data()
+        # setting data of oblique line
+        # p1 = [0,0] and p2 = [0.5,0.9]
+        self.activeFigure.obliqueLine.set_data([0, 0.5], [0, 0.9])
+
+        # to show results you must draw and update
+        # self.activeFigure.ImageDisplayer.figure.canvas.draw()
+        # self.activeFigure.update()
+
+    def mouse_move(self, event):
+        if not(self.verticalPressed or self.horizontalPressed):
+            return
+        if self.horizontalPressed:
+            self.activeFigure.horizontalLine.set_ydata(event.ydata)
+            if self.activeFigure.displayType == "axial":
+                self.coronalDisplay.displayVolume(
+                    self.coronalVolume, int(event.ydata))
+            elif self.activeFigure.displayType == "coronal":
+                self.axialdisplay.displayVolume(
+                    self.axialVolume, int(event.ydata))
+            elif self.activeFigure.displayType == "sagital":
+                self.axialdisplay.displayVolume(
+                    self.axialVolume, int(event.ydata))
+
+        if self.verticalPressed:
+            self.activeFigure.verticalLine.set_xdata(event.xdata)
+            if self.activeFigure.displayType == "axial":
+                self.sagitalDisplay.displayVolume(
+                    self.sagitalVolume, int(event.xdata))
+            elif self.activeFigure.displayType == "coronal":
+                self.sagitalDisplay.displayVolume(
+                    self.sagitalVolume, int(event.xdata))
+            elif self.activeFigure.displayType == "sagital":
+                self.coronalDisplay.displayVolume(
+                    self.coronalVolume, int(event.xdata))
+
+        self.activeFigure.ImageDisplayer.figure.canvas.draw()
+        self.activeFigure.update()
