@@ -35,7 +35,15 @@ class ImageDisplay(QtWidgets.QWidget):
         Args:
             path (str): File Path
         """
-        self.ImageDisplayer.axes.imshow(volume[215], cmap='gray')
+        self.ImageDisplayer.axes.imshow(volume[233], cmap='gray')
+        self.horizontalLine = self.ImageDisplayer.axes.axhline(y=50)
+        self.verticalLine = self.ImageDisplayer.axes.axvline(x=50)
+        self.horizontalLine.set_visible(True)
+        self.verticalLine.set_visible(True)
+        self.ImageDisplayer.figure.canvas.mpl_connect('motion_notify_event', self.onMouseMove)
+
+
+
         self.setFixedWidth(self.canvasWidth)
         self.setFixedHeight(self.canvasHeight)
         self.update()
@@ -50,3 +58,12 @@ class ImageDisplay(QtWidgets.QWidget):
         self.MessageBox.setWindowTitle(title)
         self.MessageBox.setText(Message)
         self.MessageBox.exec()
+
+    def onMouseMove(self, event):
+        x,y = event.xdata, event.ydata
+        print('x: {}, y: {}'.format(x,y))
+        print(y)
+        self.horizontalLine.set_ydata(y)
+        self.verticalLine.set_xdata(x)
+        self.ImageDisplayer.figure.canvas.draw()
+        self.update()
