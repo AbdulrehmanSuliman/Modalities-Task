@@ -57,6 +57,12 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
         self.horizontalPressed = False
         self.verticalPressed = False
+        self.obliqueAnglePressed = False
+        self.obliquePressed = False
+        self.slope = 0
+        self.bias = 0
+        self.x1 =0
+        self.y1=0
 
         self.activeFigure = None
 
@@ -142,10 +148,12 @@ class ApplicationWindow(QtWidgets.QMainWindow):
     def mouse_release(self, event):
         self.horizontalPressed = False
         self.verticalPressed = False
+        self.obliqueAnglePressed = False
+        self.obliquePressed = False
+
         return
 
     def mouse_press(self, event):
-        print(event.xdata, event.ydata)
         if self.axialdisplay.ImageDisplayer.axes == event.inaxes:
             self.activeFigure = self.axialdisplay
         elif self.coronalDisplay.ImageDisplayer.axes == event.inaxes:
@@ -161,21 +169,54 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
         if x <= self.activeFigure.verticalLine.get_xdata()+10 and x >= self.activeFigure.verticalLine.get_xdata()-10:
             self.verticalPressed = True
-
         #--------------------TODO--------------------#
         # getting data of oblique line
-        x, y = self.activeFigure.obliqueLine.get_data()
+        if self.activeFigure.displayType == "axial":
+            x, y = self.activeFigure.obliqueLine.get_data()
+            slope = (y[1]-y[0])/(x[1]-x[0])
+            self.slope = slope
+            b = y[0]- slope * x[0]
+            self.bias = b
+            if event.ydata <= slope * event.xdata + b + 10 and event.ydata >= slope * event.xdata + b - 10:
+                if (int(self.axialVolume.shape[1]) - int(event.xdata) <=13 ) or (int(self.axialVolume.shape[1]) - int(event.ydata) <=13 ) :
+                    self.obliqueAnglePressed=True
+                else:
+                    print(self.activeFigure.obliqueLine.get_data())
+                    self.obliquePressed = True
+
         # setting data of oblique line
         # p1 = [0,0] and p2 = [0.5,0.9]
-        self.activeFigure.obliqueLine.set_data([0, 0.5], [0, 0.9])
 
         # to show results you must draw and update
         # self.activeFigure.ImageDisplayer.figure.canvas.draw()
         # self.activeFigure.update()
 
     def mouse_move(self, event):
-        if not(self.verticalPressed or self.horizontalPressed):
+        if not(self.verticalPressed or self.horizontalPressed or self.obliqueAnglePressed or self.obliquePressed):
             return
+        if self.obliqueAnglePressed:
+            self.activeFigure.obliqueLine.set_data((self.x1*512,event.xdata),(self.y1*512,event.ydata))
+
+        if self.obliquePressed:
+            x1 = event.xdata
+            y1 = event.ydata
+            self.bias = y1 - self.slope * x1
+            x2 = 0
+            y2 = self.slope*x2 +self.bias
+            if y2 < 0:
+                y2 = 0
+                x2 = (y2-self.bias)/self.slope
+            self.x1 = x2
+            self.y1 = y2
+            self.activeFigure.obliqueLine.set_data((x2/512,x1/512),(y2/512,y1/512))
+            # print(self.activeFigure.obliqueLine.get_data())
+            # print(self.slope)
+            # print(self.bias)
+            # print(x1,y1)
+            # print(x2,y2)
+            # print("ob2")
+
+
         if self.horizontalPressed:
             self.activeFigure.horizontalLine.set_ydata(event.ydata)
             if self.activeFigure.displayType == "axial":

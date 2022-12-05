@@ -64,9 +64,9 @@ class ImageDisplay(QtWidgets.QWidget):
         self.verticalLine.set_xdata(self.slice2)
         if self.displayType == "axial":
             self.obliqueLine = self.ImageDisplayer.axes.axline(
-                [0, 0], slope=1)
+                (0, 0), slope=1)
+            self.obliqueLine.set_data([0, 1], [0, 1])
             self.obliqueLine.set_visible(True)
-
         self.horizontalLine.set_visible(True)
         self.verticalLine.set_visible(True)
         self.ImageDisplayer.figure.canvas.mpl_connect(
