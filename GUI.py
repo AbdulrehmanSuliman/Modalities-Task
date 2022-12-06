@@ -163,39 +163,41 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         elif self.obliqueDisplay.ImageDisplayer.axes == event.inaxes:
             self.activeFigure = self.obliqueDisplay
         x, y = event.xdata, event.ydata
-
+        # Check if the click is on the horizonal line or not
+        # and with 10 pixels magin of error
         if y <= self.activeFigure.horizontalLine.get_ydata()+10 and y >= self.activeFigure.horizontalLine.get_ydata()-10:
             self.horizontalPressed = True
 
+        # Check if the click is on the vertical line or not
+        # and with 10 pixels magin of error
         if x <= self.activeFigure.verticalLine.get_xdata()+10 and x >= self.activeFigure.verticalLine.get_xdata()-10:
             self.verticalPressed = True
-        #--------------------TODO--------------------#
-        # getting data of oblique line
+        # oblique only exists on the axial display
         if self.activeFigure.displayType == "axial":
-            x, y = self.activeFigure.obliqueLine.get_data()
-            slope = (y[1]-y[0])/(x[1]-x[0])
+            # Calculate the slope and the bias to get the equation of the oblique line
+            slope = (y-self.y1)/(x-self.x1)
             self.slope = slope
-            b = y[0]- slope * x[0]
+            b = y- slope * x
             self.bias = b
+            # ////////////////////////// complete this shit
             if event.ydata <= slope * event.xdata + b + 10 and event.ydata >= slope * event.xdata + b - 10:
+            # To determine what to do (drag or rotate) check if the click is at the end if the canvas in
+            # x or y direction, in other words, we click at the edge of the line to rotate and else where to drag
                 if (int(self.axialVolume.shape[1]) - int(event.xdata) <=13 ) or (int(self.axialVolume.shape[1]) - int(event.ydata) <=13 ) :
                     self.obliqueAnglePressed=True
                 else:
                     print(self.activeFigure.obliqueLine.get_data())
                     self.obliquePressed = True
 
-        # setting data of oblique line
-        # p1 = [0,0] and p2 = [0.5,0.9]
-
-        # to show results you must draw and update
-        # self.activeFigure.ImageDisplayer.figure.canvas.draw()
-        # self.activeFigure.update()
 
     def mouse_move(self, event):
         if not(self.verticalPressed or self.horizontalPressed or self.obliqueAnglePressed or self.obliquePressed):
             return
         if self.obliqueAnglePressed:
-            self.activeFigure.obliqueLine.set_data((self.x1*512,event.xdata),(self.y1*512,event.ydata))
+            if event.xdata != None and event.ydata != None:
+                self.activeFigure.obliqueLine.remove()
+                self.activeFigure.obliqueLine = self.activeFigure.ImageDisplayer.axes.axline(
+                    (self.x1,self.y1), (event.xdata,event.ydata))
 
         if self.obliquePressed:
             x1 = event.xdata
@@ -208,13 +210,9 @@ class ApplicationWindow(QtWidgets.QMainWindow):
                 x2 = (y2-self.bias)/self.slope
             self.x1 = x2
             self.y1 = y2
-            self.activeFigure.obliqueLine.set_data((x2/512,x1/512),(y2/512,y1/512))
-            # print(self.activeFigure.obliqueLine.get_data())
-            # print(self.slope)
-            # print(self.bias)
-            # print(x1,y1)
-            # print(x2,y2)
-            # print("ob2")
+            self.activeFigure.obliqueLine.remove()
+            self.activeFigure.obliqueLine = self.activeFigure.ImageDisplayer.axes.axline(
+                (x1, y1), slope=self.slope)
 
 
         if self.horizontalPressed:
