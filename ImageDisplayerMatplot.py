@@ -58,6 +58,7 @@ class ImageDisplay(QtWidgets.QWidget):
         self.update()
 
     def createLines(self, mouse_press, mouse_move, mouse_release):
+        # create the lines horizontal, vertical, and oblique
         self.horizontalLine = self.ImageDisplayer.axes.axhline()
         self.horizontalLine.set_ydata(self.slice1)
         self.verticalLine = self.ImageDisplayer.axes.axvline()

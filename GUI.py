@@ -59,10 +59,10 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.verticalPressed = False
         self.obliqueAnglePressed = False
         self.obliquePressed = False
-        self.slope = 0
+        self.slope = 1
         self.bias = 0
-        self.x1 =0
-        self.y1=0
+        self.x1 = 0
+        self.y1 = 0
 
         self.activeFigure = None
 
@@ -174,48 +174,51 @@ class ApplicationWindow(QtWidgets.QMainWindow):
             self.verticalPressed = True
         # oblique only exists on the axial display
         if self.activeFigure.displayType == "axial":
-            # Calculate the slope and the bias to get the equation of the oblique line
-            slope = (y-self.y1)/(x-self.x1)
-            self.slope = slope
-            b = y- slope * x
-            self.bias = b
-            # ////////////////////////// complete this shit
-            if event.ydata <= slope * event.xdata + b + 10 and event.ydata >= slope * event.xdata + b - 10:
-            # To determine what to do (drag or rotate) check if the click is at the end if the canvas in
-            # x or y direction, in other words, we click at the edge of the line to rotate and else where to drag
-                if (int(self.axialVolume.shape[1]) - int(event.xdata) <=13 ) or (int(self.axialVolume.shape[1]) - int(event.ydata) <=13 ) :
-                    self.obliqueAnglePressed=True
+            # Check if the click is on the obliquo line (Check if the points satisfy the equation of line)
+            if y <= self.slope * x + self.bias + 10 and y >= self.slope * x + self.bias - 10:
+                # To determine what to do (drag or rotate) check if the click is at the end if the canvas in
+                # x or y direction, in other words, we click at the edge of the line to rotate and else where to drag
+                if (int(self.axialVolume.shape[1]) - int(event.xdata) <= 13) or (int(self.axialVolume.shape[1]) - int(event.ydata) <= 13):
+                    print("mtdos ysta angle")
+                    self.obliqueAnglePressed = True
                 else:
                     print(self.activeFigure.obliqueLine.get_data())
+                    print("mtdos ysta ")
                     self.obliquePressed = True
-
 
     def mouse_move(self, event):
         if not(self.verticalPressed or self.horizontalPressed or self.obliqueAnglePressed or self.obliquePressed):
             return
         if self.obliqueAnglePressed:
+            # The angle needs to be changed based on two points
             if event.xdata != None and event.ydata != None:
                 self.activeFigure.obliqueLine.remove()
+            # Draw the new line based on the two points
                 self.activeFigure.obliqueLine = self.activeFigure.ImageDisplayer.axes.axline(
-                    (self.x1,self.y1), (event.xdata,event.ydata))
+                    (self.x1, self.y1), (event.xdata, event.ydata))
 
         if self.obliquePressed:
+            # get the new bias and get the first point at which the line
+            # intersects with the x or y axis
             x1 = event.xdata
             y1 = event.ydata
             self.bias = y1 - self.slope * x1
             x2 = 0
-            y2 = self.slope*x2 +self.bias
+            y2 = self.slope*x2 + self.bias
             if y2 < 0:
+                # The y point is negative so the line intersects the positive x axis
                 y2 = 0
                 x2 = (y2-self.bias)/self.slope
             self.x1 = x2
             self.y1 = y2
             self.activeFigure.obliqueLine.remove()
+            # Draw the new line based on the point and the slope
             self.activeFigure.obliqueLine = self.activeFigure.ImageDisplayer.axes.axline(
                 (x1, y1), slope=self.slope)
 
-
         if self.horizontalPressed:
+            # The horizontal line is pressed so set the ydata of the point clicked to the line
+            # and send the value to the coresponding plane viewer to get the corresponding slice on the other plane
             self.activeFigure.horizontalLine.set_ydata(event.ydata)
             if self.activeFigure.displayType == "axial":
                 self.coronalDisplay.displayVolume(
@@ -228,6 +231,8 @@ class ApplicationWindow(QtWidgets.QMainWindow):
                     self.axialVolume, int(event.ydata))
 
         if self.verticalPressed:
+            # The vertical line is pressed so set the xdata of the point clicked to the line
+            # and send the value to the coresponding plane viewer to get the corresponding slice on the other plane
             self.activeFigure.verticalLine.set_xdata(event.xdata)
             if self.activeFigure.displayType == "axial":
                 self.sagitalDisplay.displayVolume(
