@@ -146,6 +146,8 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         return (dicomVolume, sagitalVolume, coronalVolume)
 
     def mouse_release(self, event):
+        if self.obliqueAnglePressed or self.obliquePressed:
+            print("oblique line")
         self.horizontalPressed = False
         self.verticalPressed = False
         self.obliqueAnglePressed = False
@@ -174,16 +176,13 @@ class ApplicationWindow(QtWidgets.QMainWindow):
             self.verticalPressed = True
         # oblique only exists on the axial display
         if self.activeFigure.displayType == "axial":
-            # Check if the click is on the obliquo line (Check if the points satisfy the equation of line)
+            # Check if the click is on the oblique line (Check if the points satisfy the equation of line)
             if y <= self.slope * x + self.bias + 10 and y >= self.slope * x + self.bias - 10:
                 # To determine what to do (drag or rotate) check if the click is at the end if the canvas in
                 # x or y direction, in other words, we click at the edge of the line to rotate and else where to drag
                 if (int(self.axialVolume.shape[1]) - int(event.xdata) <= 13) or (int(self.axialVolume.shape[1]) - int(event.ydata) <= 13):
-                    print("mtdos ysta angle")
                     self.obliqueAnglePressed = True
                 else:
-                    print(self.activeFigure.obliqueLine.get_data())
-                    print("mtdos ysta ")
                     self.obliquePressed = True
 
     def mouse_move(self, event):
@@ -193,9 +192,10 @@ class ApplicationWindow(QtWidgets.QMainWindow):
             # The angle needs to be changed based on two points
             if event.xdata != None and event.ydata != None:
                 self.activeFigure.obliqueLine.remove()
-            # Draw the new line based on the two points
+                # Draw the new line based on the two points
                 self.activeFigure.obliqueLine = self.activeFigure.ImageDisplayer.axes.axline(
                     (self.x1, self.y1), (event.xdata, event.ydata))
+                self.slope = (event.ydata-self.bias)/event.xdata
 
         if self.obliquePressed:
             # get the new bias and get the first point at which the line
