@@ -4,6 +4,7 @@ from Helpers import BrowseWidget
 import pydicom as dicom
 from ImageDisplayerMatplot import ImageDisplay
 import numpy as np
+import math
 import os
 TEXT_COLOR = "color: #BCBCBC;"
 
@@ -147,7 +148,35 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
     def mouse_release(self, event):
         if self.obliqueAnglePressed or self.obliquePressed:
-            print("oblique line")
+            x2 = event.xdata
+            y2 = event.ydata
+            # z2 = 0
+            # point2= np.array([x2,y2,z2])
+            # x1 = self.x1
+            # y1 = self.y1
+            # z1 = 1
+            # point1= np.array([x1,y1,z1])
+            # normal = np.cross(point1, point2)
+            dx = x2 - self.x1
+            dy = y2 - self.y1
+            normal = np.array([-dy, dx, 0])
+            normal = normal / np.linalg.norm(normal)
+            print (normal)
+            p = np.zeros((math.ceil(512*math.sqrt(2)),234))
+            for x in range(511):
+                for z in range(233):
+                    y = (-1*normal[0]*(x-self.x1)+normal[1]*self.y1) / normal[1]
+                    y = int(y)
+                    i = self.axialVolume[z][x][y]
+                    p[int(math.sqrt(x**2+y**2))][z] = i
+            self.obliqueDisplay.ImageDisplayer.axes.imshow(p,cmap="gray")
+            self.obliqueDisplay.update()
+
+
+
+
+
+
         self.horizontalPressed = False
         self.verticalPressed = False
         self.obliqueAnglePressed = False
