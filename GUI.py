@@ -145,7 +145,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
             dicomVolume[i] = dicom.dcmread(path + '/' + files[i]).pixel_array
         sagitalVolume = np.rot90(
             np.rot90(dicomVolume, axes=(0, 2)), axes=(1, 2))
-        coronalVolume = np.rot90(dicomVolume, axes=(1, 0))
+        coronalVolume = np.flipud(np.rot90(dicomVolume, axes=(1, 0)))
         dicomVolume =  np.rot90(np.rot90(dicomVolume, axes=(0,1)), axes=(0,1))
         return (dicomVolume, sagitalVolume, coronalVolume)
 
@@ -164,20 +164,20 @@ class ApplicationWindow(QtWidgets.QMainWindow):
             dy = y2 - self.y1
             normal = np.array([-dy, dx, 0])
             normal = normal / np.linalg.norm(normal)
-            print (normal)
             obliqueWidth = math.floor(math.sqrt((self.endy - self.y1)**2 + (self.endx - self.x1)**2))
-            print(obliqueWidth)
             p = np.full((234, obliqueWidth), -1)
             for x in range(int(self.x1), int(self.endx), 1):
                 for z in range(234):
                     y = (-1*normal[0]*(x-self.x1)+normal[1]*self.y1) / normal[1]
-                    y = int(y)
-                    i = self.axialVolume[z][x][y]
+                    y = math.floor(y)
+                    if y > 511:
+                        y=511
+                    i = self.axialVolume[z][y][x]
                     if int(math.sqrt((x-self.x1)**2+y**2)) < obliqueWidth: 
                         p[z][int(math.sqrt((x-self.x1)**2+y**2))] = i
             for i in range(234):
                 previous = -1
-                after = -1
+                after = 0
                 distance = 0
                 for j in range(obliqueWidth):
                     if p[i][j] != -1 :
@@ -190,9 +190,11 @@ class ApplicationWindow(QtWidgets.QMainWindow):
                         for k in range(j, obliqueWidth):
                             if p[i][k] != -1:
                                 after = p[i][k]
-                                distance = k-j
+                                distance =abs(k-j)
                                 break
-                        p[i][j] = previous * (distance/1+distance) + after * (1/1+distance)
+                        newi = previous * (distance/1+distance)%1 + after * (1 - (distance/1+distance)%1)
+                        newi = math.floor(newi)
+                        p[i][j] = newi
                         previous = p[i][j] 
                         
 
