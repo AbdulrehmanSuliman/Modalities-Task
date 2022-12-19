@@ -64,6 +64,8 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.bias = 0
         self.x1 = 0
         self.y1 = 0
+        self.endx = 512
+        self.endy =512
 
         self.activeFigure = None
 
@@ -144,6 +146,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         sagitalVolume = np.rot90(
             np.rot90(dicomVolume, axes=(0, 2)), axes=(1, 2))
         coronalVolume = np.rot90(dicomVolume, axes=(1, 0))
+        dicomVolume =  np.rot90(np.rot90(dicomVolume, axes=(0,1)), axes=(0,1))
         return (dicomVolume, sagitalVolume, coronalVolume)
 
     def mouse_release(self, event):
@@ -162,15 +165,41 @@ class ApplicationWindow(QtWidgets.QMainWindow):
             normal = np.array([-dy, dx, 0])
             normal = normal / np.linalg.norm(normal)
             print (normal)
-            p = np.zeros((math.ceil(512*math.sqrt(2)),234))
-            for x in range(511):
-                for z in range(233):
+            obliqueWidth = math.floor(math.sqrt((self.endy - self.y1)**2 + (self.endx - self.x1)**2))
+            print(obliqueWidth)
+            p = np.full((234, obliqueWidth), -1)
+            for x in range(int(self.x1), int(self.endx), 1):
+                for z in range(234):
                     y = (-1*normal[0]*(x-self.x1)+normal[1]*self.y1) / normal[1]
                     y = int(y)
                     i = self.axialVolume[z][x][y]
-                    p[int(math.sqrt(x**2+y**2))][z] = i
-            self.obliqueDisplay.ImageDisplayer.axes.imshow(p,cmap="gray")
-            self.obliqueDisplay.update()
+                    if int(math.sqrt((x-self.x1)**2+y**2)) < obliqueWidth: 
+                        p[z][int(math.sqrt((x-self.x1)**2+y**2))] = i
+            for i in range(234):
+                previous = -1
+                after = -1
+                distance = 0
+                for j in range(obliqueWidth):
+                    if p[i][j] != -1 :
+                        previous = p[i][j]
+                    else:
+                        if previous == -1:
+                            p[i][j] = 0
+                            previous = 0
+                            continue
+                        for k in range(j, obliqueWidth):
+                            if p[i][k] != -1:
+                                after = p[i][k]
+                                distance = k-j
+                                break
+                        p[i][j] = previous * (distance/1+distance) + after * (1/1+distance)
+                        previous = p[i][j] 
+                        
+
+                        
+
+            self.obliqueDisplay.displayVolume(p)
+            # self.obliqueDisplay.update()
 
 
 
@@ -240,6 +269,15 @@ class ApplicationWindow(QtWidgets.QMainWindow):
                 x2 = (y2-self.bias)/self.slope
             self.x1 = x2
             self.y1 = y2
+            endx = 512
+            endy = self.slope*endx + self.bias
+            if endy > 512:
+                endy = 512
+                endx = (endy-self.bias)/self.slope
+            self.endx = endx
+            self.endy = endy
+
+
             self.activeFigure.obliqueLine.remove()
             # Draw the new line based on the point and the slope
             self.activeFigure.obliqueLine = self.activeFigure.ImageDisplayer.axes.axline(

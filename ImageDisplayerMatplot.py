@@ -32,16 +32,20 @@ class ImageDisplay(QtWidgets.QWidget):
         self.MessageBox = QtWidgets.QMessageBox(
             QtWidgets.QMessageBox.Warning, "Error", "Error")
 
-    def displayVolume(self, volume, slice):
+    def displayVolume(self, volume, slice = None):
         """Sets the path of the image and generates the information and puts it in a dictionary called Info
 
         Args:
             path (str): File Path
         """
-        self.slice1 = int(volume.shape[1]/2)
-        self.slice2 = int(volume.shape[2]/2)
-        self.ImageDisplayer.axes.imshow(
-            volume[slice], cmap='gray')
+        if slice == None:
+            self.ImageDisplayer.axes.imshow(
+                volume, cmap='gray')
+        else:
+            self.slice1 = int(volume.shape[1]/2)
+            self.slice2 = int(volume.shape[2]/2)
+            self.ImageDisplayer.axes.imshow(
+                volume[slice], cmap='gray')
 
         self.setFixedWidth(self.canvasWidth)
         self.setFixedHeight(self.canvasHeight)
