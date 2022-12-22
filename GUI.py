@@ -153,13 +153,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         if self.obliqueAnglePressed or self.obliquePressed:
             x2 = event.xdata
             y2 = event.ydata
-            # z2 = 0
-            # point2= np.array([x2,y2,z2])
-            # x1 = self.x1
-            # y1 = self.y1
-            # z1 = 1
-            # point1= np.array([x1,y1,z1])
-            # normal = np.cross(point1, point2)
+           
             dx = x2 - self.x1
             dy = y2 - self.y1
             normal = np.array([-dy, dx, 0])
