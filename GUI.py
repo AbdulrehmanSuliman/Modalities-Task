@@ -65,7 +65,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.x1 = 0
         self.y1 = 0
         self.endx = 512
-        self.endy =512
+        self.endy = 512
 
         self.activeFigure = None
 
@@ -146,61 +146,83 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         sagitalVolume = np.rot90(
             np.rot90(dicomVolume, axes=(0, 2)), axes=(1, 2))
         coronalVolume = np.flipud(np.rot90(dicomVolume, axes=(1, 0)))
-        dicomVolume =  np.rot90(np.rot90(dicomVolume, axes=(0,1)), axes=(0,1))
+        dicomVolume = np.rot90(np.rot90(dicomVolume, axes=(0, 1)), axes=(0, 1))
         return (dicomVolume, sagitalVolume, coronalVolume)
 
     def mouse_release(self, event):
         if self.obliqueAnglePressed or self.obliquePressed:
             x2 = event.xdata
             y2 = event.ydata
-           
+
             dx = x2 - self.x1
             dy = y2 - self.y1
-            normal = np.array([-dy, dx, 0])
-            normal = normal / np.linalg.norm(normal)
-            obliqueWidth = math.floor(math.sqrt((self.endy - self.y1)**2 + (self.endx - self.x1)**2))
-            p = np.full((234, obliqueWidth), -1)
-            for x in range(int(self.x1), int(self.endx), 1):
-                for z in range(234):
-                    y = (-1*normal[0]*(x-self.x1)+normal[1]*self.y1) / normal[1]
-                    y = math.floor(y)
-                    if y > 511:
-                        y=511
-                    i = self.axialVolume[z][y][x]
-                    if int(math.sqrt((x-self.x1)**2+y**2)) < obliqueWidth: 
-                        p[z][int(math.sqrt((x-self.x1)**2+y**2))] = i
-            for i in range(234):
-                previous = -1
-                after = 0
-                distance = 0
-                for j in range(obliqueWidth):
-                    if p[i][j] != -1 :
-                        previous = p[i][j]
+            step = np.array([dx, dy])
+            step = step / np.linalg.norm(step)
+            print(step)
+            obliqueWidth = math.floor(
+                math.sqrt((self.endy - self.y1)**2 + (self.endx - self.x1)**2))
+            obliqueSize = (234, math.floor(512*(2**(1/2))))
+            p = np.zeros(obliqueSize)
+            startPoint = math.floor((obliqueSize[1]-obliqueWidth)/2)
+            for z in range(obliqueSize[0]):
+                for x in range(startPoint, startPoint+obliqueWidth):
+                    x_obl = self.x1 + step[0]*(x-startPoint)
+                    y_obl = self.y1 + step[1]*(x-startPoint)
+                    # print("x_obl: {}, y_obl: {}".format(x_obl, y_obl))
+                    if math.floor(y_obl) >= 512 or math.floor(x_obl) >= 512:
+                        break
+                    previous = self.axialVolume[z][math.floor(
+                        y_obl)][math.floor(x_obl)]
+                    if math.ceil(y_obl) == 512 or math.ceil(x_obl) == 512:
+                        after = previous
                     else:
-                        if previous == -1:
-                            p[i][j] = 0
-                            previous = 0
-                            continue
-                        for k in range(j, obliqueWidth):
-                            if p[i][k] != -1:
-                                after = p[i][k]
-                                distance =abs(k-j)
-                                break
-                        newi = previous * (distance/1+distance)%1 + after * (1 - (distance/1+distance)%1)
-                        newi = math.floor(newi)
-                        p[i][j] = newi
-                        previous = p[i][j] 
-                        
+                        after = self.axialVolume[z][math.ceil(
+                            y_obl)][math.ceil(x_obl)]
 
-                        
+                    distance = math.sqrt(
+                        (math.floor(x_obl)-x_obl)**2+(math.floor(y_obl)-y_obl)**2)
+
+                    newi = int(after * (distance) +
+                               previous * (1 - (distance)))
+                    p[z][x] = newi
 
             self.obliqueDisplay.displayVolume(p)
+            # for x in range(int(self.x1), int(self.endx), 1):
+            #     for z in range(234):
+            #         y = (-1*normal[0]*(x-self.x1) +
+            #              normal[1]*self.y1) / normal[1]
+            #         y = math.floor(y)
+            #         if y > 511:
+            #             y = 511
+            #         i = self.axialVolume[z][y][x]
+            #         if int(math.sqrt((x-self.x1)**2+y**2)) < obliqueWidth:
+            #             p[z][int(math.sqrt((x-self.x1)**2+y**2))] = i
+            # for i in range(234):
+            #     previous = -1
+            #     after = 0
+            #     distance = 0
+            #     for j in range(obliqueWidth):
+            #         if p[i][j] != -1:
+            #             previous = p[i][j]
+            #         else:
+            #             if previous == -1:
+            #                 p[i][j] = 0
+            #                 previous = 0
+            #                 continue
+            #             for k in range(j, obliqueWidth):
+            #                 if p[i][k] != -1:
+            #                     after = p[i][k]
+            #                     distance = abs(k-j)
+            #                     break
+            #             newi = previous * \
+            #                 (distance/1+distance) % 1 + after * \
+            #                 (1 - (distance/1+distance) % 1)
+            #             newi = math.floor(newi)
+            #             p[i][j] = newi
+            #             previous = p[i][j]
+
+            # self.obliqueDisplay.displayVolume(p)
             # self.obliqueDisplay.update()
-
-
-
-
-
 
         self.horizontalPressed = False
         self.verticalPressed = False
@@ -272,7 +294,6 @@ class ApplicationWindow(QtWidgets.QMainWindow):
                 endx = (endy-self.bias)/self.slope
             self.endx = endx
             self.endy = endy
-
 
             self.activeFigure.obliqueLine.remove()
             # Draw the new line based on the point and the slope
