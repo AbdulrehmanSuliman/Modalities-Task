@@ -168,7 +168,6 @@ class ApplicationWindow(QtWidgets.QMainWindow):
                 for x in range(startPoint, startPoint+obliqueWidth):
                     x_obl = self.x1 + step[0]*(x-startPoint)
                     y_obl = self.y1 + step[1]*(x-startPoint)
-                    # print("x_obl: {}, y_obl: {}".format(x_obl, y_obl))
                     if math.floor(y_obl) >= 512 or math.floor(x_obl) >= 512:
                         break
                     previous = self.axialVolume[z][math.floor(
@@ -187,42 +186,6 @@ class ApplicationWindow(QtWidgets.QMainWindow):
                     p[z][x] = newi
 
             self.obliqueDisplay.displayVolume(p)
-            # for x in range(int(self.x1), int(self.endx), 1):
-            #     for z in range(234):
-            #         y = (-1*normal[0]*(x-self.x1) +
-            #              normal[1]*self.y1) / normal[1]
-            #         y = math.floor(y)
-            #         if y > 511:
-            #             y = 511
-            #         i = self.axialVolume[z][y][x]
-            #         if int(math.sqrt((x-self.x1)**2+y**2)) < obliqueWidth:
-            #             p[z][int(math.sqrt((x-self.x1)**2+y**2))] = i
-            # for i in range(234):
-            #     previous = -1
-            #     after = 0
-            #     distance = 0
-            #     for j in range(obliqueWidth):
-            #         if p[i][j] != -1:
-            #             previous = p[i][j]
-            #         else:
-            #             if previous == -1:
-            #                 p[i][j] = 0
-            #                 previous = 0
-            #                 continue
-            #             for k in range(j, obliqueWidth):
-            #                 if p[i][k] != -1:
-            #                     after = p[i][k]
-            #                     distance = abs(k-j)
-            #                     break
-            #             newi = previous * \
-            #                 (distance/1+distance) % 1 + after * \
-            #                 (1 - (distance/1+distance) % 1)
-            #             newi = math.floor(newi)
-            #             p[i][j] = newi
-            #             previous = p[i][j]
-
-            # self.obliqueDisplay.displayVolume(p)
-            # self.obliqueDisplay.update()
 
         self.horizontalPressed = False
         self.verticalPressed = False
