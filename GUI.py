@@ -41,7 +41,17 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.layout_main.setContentsMargins(0, 0, 0, 0)
 
         self.browse = BrowseWidget()
-        self.browse.browse_button.clicked.connect(lambda: self.BrowseClicked())
+        self.browse.browse_button.clicked.connect(lambda: self.browseClicked())
+        self.browse.crosshair_button.clicked.connect(
+            lambda: self.displayCrosshair())
+        self.browse.measurmentsLine_button.clicked.connect(
+            lambda: self.addMeasurments(0))
+        self.browse.measurmentsAngle_button.clicked.connect(
+            lambda: self.addMeasurments(1))
+        self.browse.measurmentsPolygon_button.clicked.connect(
+            lambda: self.addMeasurments(2))
+        self.browse.measurmentsEllipse_button.clicked.connect(
+            lambda: self.addMeasurments(3))
         self.layout_main.addWidget(self.browse, 0, 0, 1, 2)
 
         self.coronalDisplay = ImageDisplay("coronal")
@@ -56,6 +66,28 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.obliqueDisplay = ImageDisplay("oblique")
         self.layout_main.addWidget(self.obliqueDisplay, 2, 1)
 
+        self.sideLabels = QtWidgets.QVBoxLayout()
+
+        self.lineMeasurments = QtWidgets.QVBoxLayout()
+        self.lineMeasurments.addWidget(QtWidgets.QLabel('Line Measurments:'))
+        self.sideLabels.addLayout(self.lineMeasurments)
+
+        self.angleMeasurments = QtWidgets.QVBoxLayout()
+        self.angleMeasurments.addWidget(QtWidgets.QLabel('Line Measurments:'))
+        self.sideLabels.addLayout(self.angleMeasurments)
+
+        self.polygonMeasurments = QtWidgets.QVBoxLayout()
+        self.polygonMeasurments.addWidget(
+            QtWidgets.QLabel('Line Measurments:'))
+        self.sideLabels.addLayout(self.polygonMeasurments)
+
+        self.ellipseMeasurments = QtWidgets.QVBoxLayout()
+        self.ellipseMeasurments.addWidget(
+            QtWidgets.QLabel('Line Measurments:'))
+        self.sideLabels.addLayout(self.ellipseMeasurments)
+
+        self.layout_main.addLayout(self.sideLabels, 0, 2, 3, 1)
+
         self.horizontalPressed = False
         self.verticalPressed = False
         self.obliqueAnglePressed = False
@@ -66,6 +98,10 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.y1 = 0
         self.endx = 512
         self.endy = 512
+        self.isCrosshairDisabled = True
+        self.isMeasurmentsDisabled = True
+        self.isPressingEllipse = False
+        self.measurementType = -1
 
         self.activeFigure = None
 
@@ -73,29 +109,29 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.setCentralWidget(self.main_widget)
         self.resize(1080, 720)
 
-    def BrowseClicked(self):
+    def browseClicked(self):
         """saves the image from path and creates the image info string
         """
         ImagesPath = self.open_dialog_box()
-
-        self.browse.browse_text.insert(ImagesPath)
 
         self.axialVolume, self.sagitalVolume, self.coronalVolume,  = self.create3DMatrix(
             ImagesPath)
         self.axialdisplay.displayVolume(
             self.axialVolume, int(self.axialVolume.shape[0]/2))
-        self.axialdisplay.createLines(
-            self.mouse_press, self.mouse_move, self.mouse_release)
+        self.axialdisplay.enableMeasurments(
+            self.mouse_press_measurement, self.mouse_move_measurement, self.mouse_release_measurement)
         self.coronalDisplay.displayVolume(
             self.coronalVolume, int(self.coronalVolume.shape[0]/2))
-        self.coronalDisplay.createLines(
-            self.mouse_press, self.mouse_move, self.mouse_release)
+        self.coronalDisplay.enableMeasurments(
+            self.mouse_press_measurement, self.mouse_move_measurement, self.mouse_release_measurement)
         self.sagitalDisplay.displayVolume(
             self.sagitalVolume, int(self.sagitalVolume.shape[0]/2))
-        self.sagitalDisplay.createLines(
-            self.mouse_press, self.mouse_move, self.mouse_release)
+        self.sagitalDisplay.enableMeasurments(
+            self.mouse_press_measurement, self.mouse_move_measurement, self.mouse_release_measurement)
         self.obliqueDisplay.displayVolume(
             self.axialVolume, int(self.axialVolume.shape[0]/2))
+        self.obliqueDisplay.enableMeasurments(
+            self.mouse_press_measurement, self.mouse_move_measurement, self.mouse_release_measurement)
 
     def open_dialog_box(self):
         """Creates a diaglog box for the user to select file and check if it's an image
@@ -149,52 +185,60 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         dicomVolume = np.rot90(np.rot90(dicomVolume, axes=(0, 1)), axes=(0, 1))
         return (dicomVolume, sagitalVolume, coronalVolume)
 
-    def mouse_release(self, event):
-        if self.obliqueAnglePressed or self.obliquePressed:
-            x2 = event.xdata
-            y2 = event.ydata
+    def displayCrosshair(self):
+        self.browse.setButtonStyle(self.measurementType, 0)
+        self.isMeasurmentsDisabled = True
+        self.measurementType = -1
+        if self.isCrosshairDisabled:
+            self.browse.setButtonStyle(4, 1)
+            self.isCrosshairDisabled = False
+            self.axialdisplay.createLines(
+                self.mouse_press_crosshair, self.mouse_move_crosshair, self.mouse_release_crosshair)
+            self.coronalDisplay.createLines(
+                self.mouse_press_crosshair, self.mouse_move_crosshair, self.mouse_release_crosshair)
+            self.sagitalDisplay.createLines(
+                self.mouse_press_crosshair, self.mouse_move_crosshair, self.mouse_release_crosshair)
+        else:
+            self.browse.setButtonStyle(4, 0)
+            self.isCrosshairDisabled = True
+            self.axialdisplay.deleteLines()
+            self.coronalDisplay.deleteLines()
+            self.sagitalDisplay.deleteLines()
 
-            dx = x2 - self.x1
-            dy = y2 - self.y1
-            step = np.array([dx, dy])
-            step = step / np.linalg.norm(step)
-            print(step)
-            obliqueWidth = math.floor(
-                math.sqrt((self.endy - self.y1)**2 + (self.endx - self.x1)**2))
-            obliqueSize = (234, math.floor(512*(2**(1/2))))
-            p = np.zeros(obliqueSize)
-            startPoint = math.floor((obliqueSize[1]-obliqueWidth)/2)
-            for z in range(obliqueSize[0]):
-                for x in range(startPoint, startPoint+obliqueWidth):
-                    x_obl = self.x1 + step[0]*(x-startPoint)
-                    y_obl = self.y1 + step[1]*(x-startPoint)
-                    if math.floor(y_obl) >= 512 or math.floor(x_obl) >= 512:
-                        break
-                    previous = self.axialVolume[z][math.floor(
-                        y_obl)][math.floor(x_obl)]
-                    if math.ceil(y_obl) == 512 or math.ceil(x_obl) == 512:
-                        after = previous
-                    else:
-                        after = self.axialVolume[z][math.ceil(
-                            y_obl)][math.ceil(x_obl)]
+    def addMeasurments(self, num):
+        self.isMeasurmentsDisabled = False
+        self.browse.setButtonStyle(4, 0)
+        if not self.isCrosshairDisabled:
+            self.axialdisplay.deleteLines()
+            self.coronalDisplay.deleteLines()
+            self.sagitalDisplay.deleteLines()
+        if num == self.measurementType:
+            self.measurementType = -1
+            self.browse.setButtonStyle(num, 0)
+            self.isMeasurmentsDisabled = True
+        else:
+            self.browse.setButtonStyle(self.measurementType, 0)
+            self.measurementType = num
+            self.browse.setButtonStyle(num, 1)
 
-                    distance = math.sqrt(
-                        (math.floor(x_obl)-x_obl)**2+(math.floor(y_obl)-y_obl)**2)
+    def mouse_press_measurement(self, event):
+        if self.isMeasurmentsDisabled:
+            return
 
-                    newi = int(after * (distance) +
-                               previous * (1 - (distance)))
-                    p[z][x] = newi
+        if self.axialdisplay.ImageDisplayer.axes == event.inaxes:
+            self.activeFigure = self.axialdisplay
+        elif self.coronalDisplay.ImageDisplayer.axes == event.inaxes:
+            self.activeFigure = self.coronalDisplay
+        elif self.sagitalDisplay.ImageDisplayer.axes == event.inaxes:
+            self.activeFigure = self.sagitalDisplay
+        elif self.obliqueDisplay.ImageDisplayer.axes == event.inaxes:
+            self.activeFigure = self.obliqueDisplay
 
-            self.obliqueDisplay.displayVolume(p)
+        self.isPressingEllipse = True
 
-        self.horizontalPressed = False
-        self.verticalPressed = False
-        self.obliqueAnglePressed = False
-        self.obliquePressed = False
-
-        return
-
-    def mouse_press(self, event):
+    def mouse_press_crosshair(self, event):
+        if self.isCrosshairDisabled:
+            return
         if self.axialdisplay.ImageDisplayer.axes == event.inaxes:
             self.activeFigure = self.axialdisplay
         elif self.coronalDisplay.ImageDisplayer.axes == event.inaxes:
@@ -224,7 +268,17 @@ class ApplicationWindow(QtWidgets.QMainWindow):
                 else:
                     self.obliquePressed = True
 
-    def mouse_move(self, event):
+    def mouse_move_measurement(self, event):
+        if self.isMeasurmentsDisabled:
+            return
+
+        if self.measurementType == 3 and self.activeFigure and self.isPressingEllipse:
+            self.activeFigure.addEllipseMeasurements(
+                (event.xdata, event.ydata), False)
+
+    def mouse_move_crosshair(self, event):
+        if self.isCrosshairDisabled:
+            return
         if not(self.verticalPressed or self.horizontalPressed or self.obliqueAnglePressed or self.obliquePressed):
             return
         if self.obliqueAnglePressed:
@@ -293,3 +347,92 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
         self.activeFigure.ImageDisplayer.figure.canvas.draw()
         self.activeFigure.update()
+
+    def mouse_release_measurement(self, event):
+        if self.isMeasurmentsDisabled:
+            return
+        if self.measurementType == 0:
+            self.activeFigure.addLineMeasurements((event.xdata, event.ydata))
+        elif self.measurementType == 1:
+            self.activeFigure.addAngleMeasurements((event.xdata, event.ydata))
+        elif self.measurementType == 2:
+            self.activeFigure.addPolygonMeasurements(
+                (event.xdata, event.ydata))
+        elif self.measurementType == 3 and self.isPressingEllipse:
+            self.isPressingEllipse = False
+            self.activeFigure.addEllipseMeasurements(
+                (event.xdata, event.ydata), True)
+        self.ShowMeasurments()
+
+    def mouse_release_crosshair(self, event):
+        if self.isCrosshairDisabled:
+            return
+        if self.obliqueAnglePressed or self.obliquePressed:
+            x2 = event.xdata
+            y2 = event.ydata
+
+            dx = x2 - self.x1
+            dy = y2 - self.y1
+            step = np.array([dx, dy])
+            step = step / np.linalg.norm(step)
+            obliqueWidth = math.floor(
+                math.sqrt((self.endy - self.y1)**2 + (self.endx - self.x1)**2))
+            obliqueSize = (234, math.floor(512*(2**(1/2))))
+            p = np.zeros(obliqueSize)
+            startPoint = math.floor((obliqueSize[1]-obliqueWidth)/2)
+            for z in range(obliqueSize[0]):
+                for x in range(startPoint, startPoint+obliqueWidth):
+                    x_obl = self.x1 + step[0]*(x-startPoint)
+                    y_obl = self.y1 + step[1]*(x-startPoint)
+                    if math.floor(y_obl) >= 512 or math.floor(x_obl) >= 512:
+                        break
+                    previous = self.axialVolume[z][math.floor(
+                        y_obl)][math.floor(x_obl)]
+                    if math.ceil(y_obl) == 512 or math.ceil(x_obl) == 512:
+                        after = previous
+                    else:
+                        after = self.axialVolume[z][math.ceil(
+                            y_obl)][math.ceil(x_obl)]
+
+                    distance = math.sqrt(
+                        (math.floor(x_obl)-x_obl)**2+(math.floor(y_obl)-y_obl)**2)
+
+                    newi = int(after * (distance) +
+                               previous * (1 - (distance)))
+                    p[z][x] = newi
+
+            self.obliqueDisplay.displayVolume(p)
+
+        self.horizontalPressed = False
+        self.verticalPressed = False
+        self.obliqueAnglePressed = False
+        self.obliquePressed = False
+
+        return
+
+    def ShowMeasurments(self):
+        DisplayersArr = [self.axialdisplay, self.coronalDisplay,
+                         self.sagitalDisplay, self.obliqueDisplay]
+        measurmentsTypeArr = ['line', 'angle', 'polygon', 'ellipse']
+        print()
+        print('--------------------------------------------')
+        for measurmentType in measurmentsTypeArr:
+            print()
+            print(measurmentType)
+            for displayer in DisplayersArr:
+                for datapoint in displayer.Measurments[measurmentType]:
+                    print(datapoint)
+                    # for angle data enter angle in the string below
+                    # self.angleMeasurments.addWidget(QtWidgets.QLabel('HEEEEEEEERRRRRREEEEEE'))
+
+                    # for line data enter angle in the string below
+                    # self.lineMeasurments.addWidget(QtWidgets.QLabel('HEEEEEEEERRRRRREEEEEE'))
+
+                    # for polygon data enter angle in the string below
+                    # self.polygonMeasurments.addWidget(QtWidgets.QLabel('HEEEEEEEERRRRRREEEEEE'))
+
+                    # for ellipse data enter angle in the string below
+                    # self.ellipseMeasurments.addWidget(QtWidgets.QLabel('HEEEEEEEERRRRRREEEEEE'))
+                    pass
+                pass
+            pass

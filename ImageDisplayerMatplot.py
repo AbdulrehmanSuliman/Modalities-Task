@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QWidget
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
+from matplotlib.patches import Ellipse
 
 
 class MplCanvas(FigureCanvasQTAgg):
@@ -27,12 +28,21 @@ class ImageDisplay(QtWidgets.QWidget):
         self.canvasHeight = 300
         self.displayType = sliceType
         self.obliqueLine = None
+        self.tempPoint = None
+        self.tempPoint2 = None
+        self.tempPoint3 = None
+        self.Measurments = {
+            "line": [],
+            "angle": [],
+            "polygon": [],
+            "ellipse": [],
+        }
 
         self.setLayout(self.layout_main)
         self.MessageBox = QtWidgets.QMessageBox(
             QtWidgets.QMessageBox.Warning, "Error", "Error")
 
-    def displayVolume(self, volume, slice = None):
+    def displayVolume(self, volume, slice=None):
         """Sets the path of the image and generates the information and puts it in a dictionary called Info
 
         Args:
@@ -61,6 +71,103 @@ class ImageDisplay(QtWidgets.QWidget):
 
         self.update()
 
+    def deleteLines(self):
+        self.horizontalLine.remove()
+        self.verticalLine.remove()
+        if self.displayType == "axial":
+            self.obliqueLine.remove()
+        # self.ImageDisplayer.draw()
+        self.ImageDisplayer.figure.canvas.draw()
+        self.update()
+
+    def addEllipseMeasurements(self, point, hasReleased):
+        if self.tempPoint == None:
+            self.tempPoint = point
+            self.tempEllipse = Ellipse(point, 0, 0)
+            self.tempEllipse.set(fill=False, linewidth=2, color='yellow')
+            self.ImageDisplayer.axes.add_patch(self.tempEllipse)
+            return
+
+        self.tempEllipse.set_width(2*abs(self.tempPoint[0]-point[0]))
+        self.tempEllipse.set_height(2*abs(self.tempPoint[1]-point[1]))
+        if hasReleased:
+            self.Measurments['ellipse'].append((self.tempPoint, point))
+            self.tempPoint = None
+        self.ImageDisplayer.figure.canvas.draw()
+        self.update()
+
+    def addPolygonMeasurements(self, point):
+        if self.tempPoint == None:
+            self.tempPoint = point
+            return
+        if self.tempPoint2 == None:
+            self.tempPoint2 = point
+            self.ImageDisplayer.axes.plot(
+                [self.tempPoint[0], self.tempPoint2[0]], [self.tempPoint[1], self.tempPoint2[1]], 'k-', color='blue', linewidth=2)
+            self.ImageDisplayer.figure.canvas.draw()
+            self.update()
+            return
+        if self.tempPoint3 == None:
+            self.tempPoint3 = point
+            self.ImageDisplayer.axes.plot(
+                [self.tempPoint2[0], self.tempPoint3[0]], [self.tempPoint2[1], self.tempPoint3[1]], 'k-', color='blue', linewidth=2)
+            self.ImageDisplayer.figure.canvas.draw()
+            self.update()
+            return
+        self.ImageDisplayer.axes.plot(
+            [self.tempPoint3[0], point[0]], [self.tempPoint3[1], point[1]], 'k-', color='blue', linewidth=2)
+        self.ImageDisplayer.axes.plot(
+            [self.tempPoint[0], point[0]], [self.tempPoint[1], point[1]], 'k-', color='blue', linewidth=2)
+        self.Measurments["polygon"].append(
+            (self.tempPoint, self.tempPoint2, self.tempPoint3, point))
+        self.tempPoint = None
+        self.tempPoint2 = None
+        self.tempPoint3 = None
+        self.ImageDisplayer.figure.canvas.draw()
+        self.update()
+
+    def addAngleMeasurements(self, point):
+        if self.tempPoint == None:
+            self.tempPoint = point
+            return
+        if self.tempPoint2 == None:
+            self.tempPoint2 = point
+            self.ImageDisplayer.axes.plot(
+                [self.tempPoint[0], self.tempPoint2[0]], [self.tempPoint[1], self.tempPoint2[1]], 'k-', color='red', linewidth=2)
+            self.ImageDisplayer.figure.canvas.draw()
+            self.update()
+            return
+
+        self.ImageDisplayer.axes.plot(
+            [self.tempPoint2[0], point[0]], [self.tempPoint2[1], point[1]], 'k-', color='red', linewidth=2)
+        self.Measurments["angle"].append(
+            (self.tempPoint, self.tempPoint2, point))
+        self.tempPoint = None
+        self.tempPoint2 = None
+        self.ImageDisplayer.figure.canvas.draw()
+        self.update()
+
+    def addLineMeasurements(self, point):
+        if self.tempPoint == None:
+            self.tempPoint = point
+            return
+        else:
+            self.ImageDisplayer.axes.plot(
+                [self.tempPoint[0], point[0]], [self.tempPoint[1], point[1]], 'k-', color='green', linewidth=2)
+            self.Measurments["line"].append((point, self.tempPoint))
+            self.tempPoint = None
+
+            self.ImageDisplayer.figure.canvas.draw()
+            self.update()
+
+    def enableMeasurments(self, mouse_press, mouse_move, mouse_release):
+        self.ImageDisplayer.figure.canvas.mpl_connect(
+            'button_press_event', mouse_press)
+        self.ImageDisplayer.figure.canvas.mpl_connect(
+            'button_release_event', mouse_release)
+        self.ImageDisplayer.figure.canvas.mpl_connect(
+            'motion_notify_event', mouse_move)
+
     def createLines(self, mouse_press, mouse_move, mouse_release):
         # create the lines horizontal, vertical, and oblique
         self.horizontalLine = self.ImageDisplayer.axes.axhline()
@@ -80,6 +187,9 @@ class ImageDisplay(QtWidgets.QWidget):
             'button_release_event', mouse_release)
         self.ImageDisplayer.figure.canvas.mpl_connect(
             'motion_notify_event', mouse_move)
+
+        self.ImageDisplayer.figure.canvas.draw()
+        self.update()
 
     def DisplayError(self, title, Message):
         """Creates a messsage box when and error happens
