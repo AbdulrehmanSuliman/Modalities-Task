@@ -91,7 +91,10 @@ class ImageDisplay(QtWidgets.QWidget):
         self.tempEllipse.set_width(2*abs(self.tempPoint[0]-point[0]))
         self.tempEllipse.set_height(2*abs(self.tempPoint[1]-point[1]))
         if hasReleased:
-            self.Measurments['ellipse'].append((self.tempPoint, point))
+            self.Measurments['ellipse'].append((self.tempEllipse.width, self.tempEllipse.height))
+            # self.Measurments['ellipse'].append((self.tempPoint, point))
+            # print(self.tempEllipse.width)
+            # print(self.tempEllipse.height)
             self.tempPoint = None
         self.ImageDisplayer.figure.canvas.draw()
         self.update()

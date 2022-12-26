@@ -73,17 +73,17 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.sideLabels.addLayout(self.lineMeasurments)
 
         self.angleMeasurments = QtWidgets.QVBoxLayout()
-        self.angleMeasurments.addWidget(QtWidgets.QLabel('Line Measurments:'))
+        self.angleMeasurments.addWidget(QtWidgets.QLabel('Angle Measurments:'))
         self.sideLabels.addLayout(self.angleMeasurments)
 
         self.polygonMeasurments = QtWidgets.QVBoxLayout()
         self.polygonMeasurments.addWidget(
-            QtWidgets.QLabel('Line Measurments:'))
+            QtWidgets.QLabel('Polygon Measurments:'))
         self.sideLabels.addLayout(self.polygonMeasurments)
 
         self.ellipseMeasurments = QtWidgets.QVBoxLayout()
         self.ellipseMeasurments.addWidget(
-            QtWidgets.QLabel('Line Measurments:'))
+            QtWidgets.QLabel('Ellipse Measurments:'))
         self.sideLabels.addLayout(self.ellipseMeasurments)
 
         self.layout_main.addLayout(self.sideLabels, 0, 2, 3, 1)
@@ -343,7 +343,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
                     self.sagitalVolume, int(event.xdata))
             elif self.activeFigure.displayType == "sagital":
                 self.coronalDisplay.displayVolume(
-                    self.coronalVolume, int(event.xdata))
+                    self.coronalVolume, 512-int(event.xdata))
 
         self.activeFigure.ImageDisplayer.figure.canvas.draw()
         self.activeFigure.update()
@@ -418,21 +418,50 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         print('--------------------------------------------')
         for measurmentType in measurmentsTypeArr:
             print()
-            print(measurmentType)
             for displayer in DisplayersArr:
+
                 for datapoint in displayer.Measurments[measurmentType]:
-                    print(datapoint)
                     # for angle data enter angle in the string below
-                    # self.angleMeasurments.addWidget(QtWidgets.QLabel('HEEEEEEEERRRRRREEEEEE'))
+                    print(datapoint)
+                    if measurmentType == 'angle':
+                        a = np.array(datapoint[0])
+                        b = np.array(datapoint[1])
+                        c = np.array(datapoint[2])
+                        ba = a - b
+                        bc = c - b
+                        cosine_angle = np.dot(ba, bc) / (np.linalg.norm(ba) * np.linalg.norm(bc))
+                        angle = np.arccos(cosine_angle)
+                        self.angleMeasurments.addWidget(QtWidgets.QLabel(str(np.degrees(angle))))
 
                     # for line data enter angle in the string below
-                    # self.lineMeasurments.addWidget(QtWidgets.QLabel('HEEEEEEEERRRRRREEEEEE'))
+                    if measurmentType == 'line':
+                        distance = math.sqrt((datapoint[0][0]-datapoint[1][0])**2+(datapoint[0][1]-datapoint[1][1])**2)
+                        self.lineMeasurments.addWidget(QtWidgets.QLabel(str(distance)))
+
 
                     # for polygon data enter angle in the string below
-                    # self.polygonMeasurments.addWidget(QtWidgets.QLabel('HEEEEEEEERRRRRREEEEEE'))
+                    if measurmentType == 'polygon':
+                        xl=[]
+                        yl=[]
+                        for i in range(len(datapoint)):
+                            xl.append(datapoint[i][0])
+                            yl.append(datapoint[i][1])
+                        a1,a2=0,0
+                        xl.append(xl[0])
+                        yl.append(yl[0])
+                        for j in range(len(xl)-1):
+                            a1 += xl[j]*yl[j+1]
+                            a2 += yl[j]*xl[j+1]
+                        l=abs(a1-a2)/2
+                        self.polygonMeasurments.addWidget(QtWidgets.QLabel(str(l)))
 
                     # for ellipse data enter angle in the string below
-                    # self.ellipseMeasurments.addWidget(QtWidgets.QLabel('HEEEEEEEERRRRRREEEEEE'))
+                    if measurmentType == 'ellipse':
+                        r1 = datapoint[1]
+                        r2 = datapoint[0]
+                        area = math.pi * (r1/2) *(r2/2)
+                        self.ellipseMeasurments.addWidget(QtWidgets.QLabel(str(area)))
+                    displayer.Measurments[measurmentType] =[]
                     pass
                 pass
             pass
